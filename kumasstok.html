@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAKROTEKS Kumaş Stok v19.0 - Yeni Database</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root { --blue: #1a73e8; --green: #28a745; --red: #d93025; --dark: #1e293b; --border: #e2e8f0; --orange: #f59e0b; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f8fafc; margin: 10px; color: var(--dark); }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid var(--border); padding-bottom: 15px; }
+        .header h2 { margin: 0; font-size: 20px; color: var(--blue); }
+        .summary-panel { background: var(--dark); color: white; padding: 15px; border-radius: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; margin-bottom: 20px; }
+        .summary-item b { display: block; font-size: 1.5rem; color: #38bdf8; }
+        .form-section { background: #f1f5f9; padding: 20px; border-radius: 12px; margin-bottom: 20px; transition: all 0.3s; }
+        .form-section.edit-mode { background: #fff7ed; border: 2px solid var(--orange); }
+        .form-grid { display: grid; grid-template-columns: 1.5fr 1.5fr 1.5fr 0.8fr auto; gap: 10px; align-items: end; }
+        input { padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; outline: none; width: 100%; box-sizing: border-box; background: white; }
+        .search-container { margin-bottom: 20px; position: relative; }
+        .search-container input { padding-left: 40px; border-color: var(--blue); border-width: 2px; }
+        .search-container i { position: absolute; left: 15px; top: 12px; color: var(--blue); }
+        .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
+        .file-input-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
+        .file-btn { border: 1.5px dashed var(--blue); color: var(--blue); background: white; padding: 8px; border-radius: 8px; display: block; text-align: center; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .btn-print { background: #64748b; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+        .kumas-grubu { border: 1.5px solid var(--border); border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
+        .kumas-baslik { background: #ffffff; padding: 15px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+        .kumas-baslik.active { background: #eff6ff; border-bottom: 1.5px solid var(--border); }
+        .kumas-detay { display: none; padding: 15px; background: #fff; }
+        .kumas-detay.open { display: flex; gap: 20px; }
+        .kumas-resim-alani { width: 180px; height: 180px; border-radius: 10px; overflow: hidden; border: 1px solid #eee; flex-shrink: 0; background: #f8fafc; display: flex; align-items: center; justify-content: center; }
+        .kumas-resim-alani img { width: 100%; height: 100%; object-fit: cover; }
+        .kumas-liste-alani { flex-grow: 1; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+        .qty-box { font-weight: bold; color: var(--blue); text-align: center; }
+        .action-cell { display: flex; gap: 5px; justify-content: flex-end; align-items: center; }
+        .op-input { width: 60px; text-align: center; border: 1.5px solid #cbd5e1; border-radius: 4px; padding: 5px; }
+        .btn-op { width: 32px; height: 32px; border: none; border-radius: 4px; color: white; cursor: pointer; }
+        .badge-renk { background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-size: 12px; }
+        .badge-toplam { background: var(--blue); color: white; padding: 4px 10px; border-radius: 6px; font-size: 12px; }
+        @media print {
+            .no-print, .form-section, .action-cell, .btn-print, .search-container { display: none !important; }
+            .kumas-detay { display: flex !important; }
+            .container { box-shadow: none; width: 100%; max-width: 100%; border: none; }
+            body { background: white; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2><i class="fa-solid fa-boxes-stacked"></i> KUMAŞ STOK YÖNETİMİ</h2>
+        <button class="btn-print no-print" onclick="window.print()">
+            <i class="fa fa-print"></i> LİSTEYİ YAZDIR
+        </button>
+    </div>
+
+    <div class="summary-panel">
+        <div class="summary-item"><span>Kumaş Türü</span><b id="toplamTur">0</b></div>
+        <div class="summary-item"><span>Toplam Renk</span><b id="toplamRenk">0</b></div>
+        <div class="summary-item"><span>Genel Stok (Kap)</span><b id="toplamKap">0</b></div>
+    </div>
+
+    <div class="form-section no-print" id="formAlani">
+        <div id="editLabel" style="display:none; color:var(--orange); font-weight:bold; margin-bottom:10px;">
+            <i class="fa fa-edit"></i> DÜZENLEME MODU: İsim değişikliği tüm grubu etkiler!
+        </div>
+        <div class="form-grid">
+            <input type="text" id="inpCinsi" placeholder="Kumaş Cinsi...">
+            <input type="text" id="inpRenk" placeholder="Renk...">
+            <div class="file-input-wrapper">
+                <div class="file-btn" id="fileBtnText"><i class="fa fa-image"></i> RESİM</div>
+                <input type="file" id="inpResimDosya" accept="image/*" onchange="dosyaSecildi(this)">
+            </div>
+            <input type="number" id="inpAdet" placeholder="Adet">
+            <div style="display:flex; gap:5px;">
+                <button class="btn-op" id="btnKaydet" style="background:var(--green); width:auto; padding:0 20px; border-radius:8px; font-weight:bold" onclick="kaydetVeyaGuncelle()">KAYDET</button>
+                <button id="btnIptal" style="display:none; background:var(--red); color:white; border:none; padding:0 10px; border-radius:8px; cursor:pointer;" onclick="formSifirla()" title="İptal"><i class="fa fa-times"></i></button>
+            </div>
+        </div>
+        <div id="onizlemeArea" style="display:none; margin-top:10px; font-size:12px; color:var(--green)">
+            <i class="fa fa-check"></i> Resim seçildi.
+        </div>
+    </div>
+
+    <div class="search-container no-print">
+        <i class="fa fa-search"></i>
+        <input type="text" id="searchInput" placeholder="Kumaş ismi ile ara..." onkeyup="listeyiCiz()">
+    </div>
+
+    <div id="stokListesi"></div>
+</div>
+
+<script>
+    // GÜNCELLENEN DATABASE BİLGİLERİ (DOĞAN GÜNEŞ)
+    const firebaseConfig = {
+        apiKey: "AIzaSyDO8t-EAitn7S8sMDT8dussYYOIzoWaRzc",
+        authDomain: "dogan-gunes.firebaseapp.com",
+        databaseURL: "https://dogan-gunes-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "dogan-gunes",
+        storageBucket: "dogan-gunes.firebasestorage.app",
+        messagingSenderId: "713688836860",
+        appId: "1:713688836860:web:87bcc679b7fe4bd5920579"
+    };
+
+    // Firebase'i Başlat
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const stokRef = db.ref("kumas_stoklari");
+    
+    let tumVeriler = {};
+    let secilenResimBase64 = "";
+    let duzenlenenId = null;
+    let eskiKumasIsmi = "";
+
+    function dosyaSecildi(input) {
+        const file = input.files[0];
+        if (file) {
+            if(file.size > 800 * 1024) { 
+                alert("Resim çok büyük! Lütfen daha küçük bir dosya seçin.");
+                input.value = "";
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                secilenResimBase64 = e.target.result;
+                document.getElementById('fileBtnText').innerHTML = "<i class='fa fa-check'></i> TAMAM";
+                document.getElementById('onizlemeArea').style.display = "block";
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    async function kaydetVeyaGuncelle() {
+        const yeniCinsi = document.getElementById('inpCinsi').value.toUpperCase().trim();
+        const yeniRenk = document.getElementById('inpRenk').value.toUpperCase().trim();
+        const yeniAdet = parseInt(document.getElementById('inpAdet').value) || 0;
+        
+        if(!yeniCinsi || !yeniRenk) return alert("Eksik bilgi!");
+
+        if(duzenlenenId) {
+            if(yeniCinsi !== eskiKumasIsmi) {
+                if(confirm(`Kumaş ismini "${eskiKumasIsmi}" -> "${yeniCinsi}" olarak değiştirmek, bu gruptaki TÜM renkleri etkileyecektir. Onaylıyor musunuz?`)) {
+                    const guncellemeler = {};
+                    Object.keys(tumVeriler).forEach(id => {
+                        if(tumVeriler[id].cinsi === eskiKumasIsmi) {
+                            guncellemeler[`${id}/cinsi`] = yeniCinsi;
+                            if(secilenResimBase64) guncellemeler[`${id}/resim`] = secilenResimBase64;
+                        }
+                    });
+                    guncellemeler[`${duzenlenenId}/renk`] = yeniRenk;
+                    guncellemeler[`${duzenlenenId}/adet`] = yeniAdet;
+                    await stokRef.update(guncellemeler);
+                }
+            } else {
+                const veri = { cinsi: yeniCinsi, renk: yeniRenk, adet: yeniAdet };
+                if(secilenResimBase64) {
+                    veri.resim = secilenResimBase64;
+                } else if(tumVeriler[duzenlenenId].resim) {
+                    veri.resim = tumVeriler[duzenlenenId].resim;
+                }
+                await stokRef.child(duzenlenenId).update(veri);
+            }
+            formSifirla();
+        } else {
+            stokRef.push({ cinsi: yeniCinsi, renk: yeniRenk, adet: yeniAdet, resim: secilenResimBase64 });
+            formSifirla();
+        }
+    }
+
+    function duzenleModu(id) {
+        duzenlenenId = id;
+        const v = tumVeriler[id];
+        eskiKumasIsmi = v.cinsi;
+        document.getElementById('inpCinsi').value = v.cinsi;
+        document.getElementById('inpRenk').value = v.renk;
+        document.getElementById('inpAdet').value = v.adet;
+        document.getElementById('formAlani').classList.add('edit-mode');
+        document.getElementById('editLabel').style.display = 'block';
+        document.getElementById('btnIptal').style.display = 'block';
+        document.getElementById('btnKaydet').innerText = "GÜNCELLE";
+        document.getElementById('btnKaydet').style.background = "var(--orange)";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function formSifirla() {
+        duzenlenenId = null;
+        eskiKumasIsmi = "";
+        secilenResimBase64 = "";
+        document.getElementById('inpCinsi').value = "";
+        document.getElementById('inpRenk').value = "";
+        document.getElementById('inpAdet').value = "";
+        document.getElementById('inpResimDosya').value = "";
+        document.getElementById('formAlani').classList.remove('edit-mode');
+        document.getElementById('editLabel').style.display = 'none';
+        document.getElementById('btnIptal').style.display = 'none';
+        document.getElementById('btnKaydet').innerText = "KAYDET";
+        document.getElementById('btnKaydet').style.background = "var(--green)";
+        document.getElementById('fileBtnText').innerHTML = "<i class='fa fa-image'></i> RESİM";
+        document.getElementById('onizlemeArea').style.display = "none";
+    }
+
+    stokRef.on("value", (snap) => {
+        tumVeriler = snap.val() || {};
+        listeyiCiz();
+    });
+
+    function listeyiCiz() {
+        const listeDiv = document.getElementById('stokListesi');
+        const aramaKelimesi = document.getElementById('searchInput').value.toUpperCase().trim();
+        listeDiv.innerHTML = "";
+        const gruplar = {};
+        let tTur = 0, tRenk = 0, tKap = 0;
+
+        Object.keys(tumVeriler).forEach(id => {
+            const v = tumVeriler[id];
+            if (aramaKelimesi && !v.cinsi.includes(aramaKelimesi)) return;
+            if (!gruplar[v.cinsi]) gruplar[v.cinsi] = [];
+            gruplar[v.cinsi].push({ id, ...v });
+        });
+
+        Object.keys(gruplar).sort().forEach(cinsi => {
+            tTur++;
+            const renkler = gruplar[cinsi];
+            const grupToplamKap = renkler.reduce((sum, r) => sum + (r.adet || 0), 0);
+            const grupResmi = renkler.find(r => r.resim && r.resim !== "")?.resim || "https://placehold.co/180x180?text=KUMAS+RESMI";
+            
+            tRenk += renkler.length;
+            tKap += grupToplamKap;
+
+            const grupDiv = document.createElement('div');
+            grupDiv.className = 'kumas-grubu';
+            grupDiv.innerHTML = `
+                <div class="kumas-baslik" onclick="toggleDetay(this)">
+                    <div>
+                        <span>${cinsi}</span>
+                        <span class="badge-renk" style="margin-left:10px">${renkler.length} Renk</span>
+                    </div>
+                    <div>
+                        <span class="badge-toplam">Toplam: ${grupToplamKap} KAP</span>
+                        <i class="fa fa-chevron-down no-print" style="margin-left:15px"></i>
+                    </div>
+                </div>
+                <div class="kumas-detay">
+                    <div class="kumas-resim-alani">
+                        <img src="${grupResmi}" alt="${cinsi}" onerror="this.src='https://placehold.co/180x180?text=Hata'">
+                    </div>
+                    <div class="kumas-liste-alani">
+                        <table>
+                            ${renkler.map(r => `
+                                <tr>
+                                    <td style="width:35%">${r.renk}</td>
+                                    <td class="qty-box" style="width:20%">${r.adet} KAP</td>
+                                    <td class="action-cell no-print">
+                                        <input type="number" id="val_${r.id}" class="op-input" placeholder="0">
+                                        <button class="btn-op" style="background:var(--green)" onclick="islem('${r.id}', 'artir')">+</button>
+                                        <button class="btn-op" style="background:var(--red)" onclick="islem('${r.id}', 'azalt')">-</button>
+                                        <button class="btn-op" style="background:var(--orange); margin-left:5px" onclick="duzenleModu('${r.id}')" title="Düzenle"><i class="fa fa-edit"></i></button>
+                                        <button onclick="sil('${r.id}')" style="border:none; background:none; color:#cbd5e1; cursor:pointer; margin-left:10px"><i class="fa fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    </div>
+                </div>
+            `;
+            listeDiv.appendChild(grupDiv);
+        });
+
+        document.getElementById('toplamTur').innerText = tTur;
+        document.getElementById('toplamRenk').innerText = tRenk;
+        document.getElementById('toplamKap').innerText = tKap;
+    }
+
+    function toggleDetay(baslikElement) {
+        baslikElement.classList.toggle('active');
+        const detay = baslikElement.nextElementSibling;
+        detay.classList.toggle('open');
+    }
+
+    function islem(id, tip) {
+        const input = document.getElementById('val_' + id);
+        const miktar = parseInt(input.value);
+        if (isNaN(miktar) || miktar <= 0) return alert("Miktar giriniz!");
+        const mevcut = tumVeriler[id].adet || 0;
+        let yeni = tip === 'artir' ? mevcut + miktar : mevcut - miktar;
+        if(yeni < 0) yeni = 0;
+        stokRef.child(id).update({ adet: yeni }).then(() => input.value = "");
+    }
+
+    function sil(id) { if(confirm("Bu rengi silmek istediğinize emin misiniz?")) stokRef.child(id).remove(); }
+</script>
+</body>
+</html>

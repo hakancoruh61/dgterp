@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doğan Güneş ERP - Tam Yetkili Yönetim</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <style>
+        :root { --primary: #2c3e50; --accent: #f39c12; --bg: #f4f7f6; --success: #27ae60; --blue: #3498db; --danger: #e74c3c; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--primary); }
+        .container { max-width: 1200px; margin: auto; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .summary-banner { background: linear-gradient(135deg, #2c3e50, #1a252f); color: white; padding: 20px 30px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .total-badge { background: var(--accent); padding: 10px 20px; border-radius: 8px; font-size: 24px; font-weight: 800; }
+        .section-title { border-left: 5px solid var(--accent); padding-left: 15px; margin: 30px 0 15px 0; color: var(--primary); font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        .section-title.passive { border-color: #95a5a6; color: #7f8c8d; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 450px; }
+        .modal-header { border-bottom: 2px solid var(--accent); margin-bottom: 20px; padding-bottom: 10px; font-weight: bold; font-size: 18px; }
+        .input-group { display: flex; flex-direction: column; margin-bottom: 15px; }
+        label { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 5px; }
+        input, select, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none; font-size: 14px; }
+        .order-item { background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 10px; }
+        .order-header { padding: 15px; display: grid; grid-template-columns: 0.7fr 0.8fr 1.5fr 1.2fr 0.8fr 0.7fr 1.8fr; align-items: center; font-size: 14px; }
+        .details-panel { display: none; padding: 20px; background: #fcfcfc; border-top: 1px dashed #ddd; }
+        .details-panel.active { display: block; }
+        .color-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .color-table th { background: #f8f9fa; padding: 12px; text-align: left; font-size: 12px; color: #777; }
+        .color-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 13px; }
+        .btn-submit { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-update { background: var(--blue); color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+        .btn-detail { background: var(--primary); color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 2px; }
+        .status-select { padding: 5px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .status-boyada { background: #e3f2fd; color: #2980b9; }
+        .status-tamamlandi { background: #e8f5e9; color: #27ae60; }
+
+        /* YAZDIRMA TASARIMI GÜNCELLEME */
+        @media print {
+            @page { size: A4; margin: 0; }
+            body * { visibility: hidden; }
+            .print-active, .print-active * { visibility: visible !important; }
+            .print-active { 
+                display: block !important; 
+                position: absolute; 
+                top: 0; left: 0; 
+                width: 210mm; 
+                padding: 15mm; 
+                box-sizing: border-box; 
+                background: white; 
+            }
+            .no-print { display: none !important; }
+        }
+
+        /* Ortak Yazdırma Stilleri */
+        #printArea, #printListArea { display: none; font-family: 'Times New Roman', serif; color: black; line-height: 1.4; }
+        .p-title { text-align: center; font-size: 24pt; font-weight: bold; margin-bottom: 2mm; }
+        
+        /* Boya Talimatı Çizgi Ayarı */
+        .p-subtitle { 
+            text-align: center; font-size: 20pt; font-weight: bold; 
+            border-bottom: 3px solid black; /* Çizgi burada */
+            padding-bottom: 4mm; margin-bottom: 6mm; 
+        }
+
+        .p-row { display: flex; margin-bottom: 4mm; font-size: 14pt; border-bottom: 1px solid #eee; padding-bottom: 2mm; }
+        .p-label { font-weight: bold; width: 60mm; }
+        .p-islem-box { border: 2px solid black; min-height: 80mm; padding: 5mm; font-size: 13pt; margin-top: 3mm; white-space: pre-wrap; }
+
+        /* Sipariş Listesi Yazdırma Tablosu */
+        .print-table { width: 100%; border-collapse: collapse; margin-top: 5mm; }
+        .print-table th, .print-table td { border: 1px solid black; padding: 8px; text-align: left; font-size: 11pt; }
+        .print-table th { background-color: #f2f2f2; }
+        .print-total { text-align: right; font-size: 14pt; font-weight: bold; margin-top: 5mm; }
+    </style>
+</head>
+<body>
+
+<div id="printArea">
+    <div class="p-title">DOĞAN GÜNEŞ TEKSTİL</div>
+    <div class="p-subtitle">BOYA TALİMATI</div>
+    <div style="text-align:right; font-weight:bold; margin-bottom:5mm;" id="printDate"></div>
+    <div class="p-row"><span class="p-label">KUMAŞ ADI:</span> <span id="p_kumas"></span></div>
+    <div class="p-row"><span class="p-label">İSTENİLEN EN:</span> <span id="p_en"></span></div>
+    <div class="p-row"><span class="p-label">İSTENİLEN GRAMAJ:</span> <span id="p_gr"></span></div>
+    <div class="p-row"><span class="p-label">BOYANACAK RENK:</span> <span id="p_renk"></span></div>
+    <div class="p-row"><span class="p-label">RENK KODU:</span> <span id="p_kod"></span></div>
+    <div class="p-row"><span class="p-label">TOP ADET:</span> <span id="p_top"></span></div>
+    <div class="p-row"><span class="p-label">MİKTAR (KG):</span> <span id="p_miktar"></span></div>
+    <div style="font-weight:bold; margin-top:5mm;">YAPILACAK İŞLEMLER:</div>
+    <div class="p-islem-box" id="p_islem"></div>
+</div>
+
+<div id="printListArea">
+    <div class="p-title">DOĞAN GÜNEŞ TEKSTİL</div>
+    <div style="text-align:center; font-size:18pt; font-weight:bold; border-bottom:3px solid black; padding-bottom:4mm; margin-bottom:4mm;">SİPARİŞ LİSTESİ</div>
+    <div style="text-align:right; margin-bottom:5mm;" id="listPrintDate"></div>
+    <table class="print-table">
+        <thead>
+            <tr>
+                <th>Tarih</th>
+                <th>Müşteri Adı</th>
+                <th>Kumaş Adı</th>
+                <th>En</th>
+                <th>Gramaj</th>
+                <th>Miktar</th>
+            </tr>
+        </thead>
+        <tbody id="printTableBody"></tbody>
+    </table>
+    <div class="print-total" id="printGrandTotal"></div>
+</div>
+
+<div class="container no-print">
+    <div class="summary-banner">
+        <div><h1>Doğan Güneş Tekstil</h1><small>Üretim Paneli</small></div>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <button class="btn-submit" style="background:#fff; color:#2c3e50;" onclick="window.printList()">
+                <span class="material-icons-round" style="vertical-align:middle">print</span> LİSTEYİ YAZDIR
+            </button>
+            <div class="total-badge" id="grand-total-display">0 kg</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h2>Sipariş Listesi</h2>
+            <button class="btn-submit" onclick="openOrderModal()">+ YENİ SİPARİŞ</button>
+        </div>
+        <div id="activeOrders"></div>
+        <div class="section-title passive">ARŞİVLENMİŞ SİPARİŞLER</div>
+        <div id="passiveOrders"></div>
+    </div>
+</div>
+
+<div id="orderModal" class="modal"><div class="modal-content"><div class="modal-header">Sipariş Bilgileri</div><input type="hidden" id="editOrderId"><div class="input-group"><label>Tarih</label><input type="date" id="orderDate"></div><div class="input-group"><label>Müşteri</label><input type="text" id="customerName"></div><div class="input-group"><label>Kumaş</label><input type="text" id="fabricName"></div><div style="display:flex; gap:10px;"><div class="input-group" style="flex:1;"><label>Gramaj</label><input type="number" id="fabricWeight"></div><div class="input-group" style="flex:1;"><label>En</label><input type="number" id="fabricWidth"></div></div><div class="input-group"><label>Toplam Kg</label><input type="number" id="orderQuantity"></div><button class="btn-submit" onclick="saveOrder()" style="width:100%">KAYDET</button><button onclick="closeModal('orderModal')" style="width:100%; background:none; border:none; margin-top:10px; cursor:pointer;">Kapat</button></div></div>
+<div id="colorEditModal" class="modal"><div class="modal-content"><div class="modal-header">Renk Güncelle</div><input type="hidden" id="ecOrderId"><input type="hidden" id="ecKey"><div class="input-group"><label>Renk</label><input type="text" id="ecRenk"></div><div class="input-group"><label>Kod</label><input type="text" id="ecKod"></div><div style="display:flex; gap:10px;"><div class="input-group" style="flex:1;"><label>Top</label><input type="number" id="ecTop"></div><div class="input-group" style="flex:1;"><label>Kg</label><input type="number" id="ecKg"></div></div><div class="input-group"><label>İşlemler</label><textarea id="ecIslem" rows="3"></textarea></div><button class="btn-submit" onclick="saveColorEdit()" style="width:100%">GÜNCELLE</button><button onclick="closeModal('colorEditModal')" style="width:100%; background:none; border:none; margin-top:10px; cursor:pointer;">İptal</button></div></div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+    import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDO8t-EAitn7S8sMDT8dussYYOIzoWaRzc",
+        authDomain: "dogan-gunes.firebaseapp.com",
+        databaseURL: "https://dogan-gunes-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "dogan-gunes",
+        appId: "1:713688836860:web:87bcc679b7fe4bd5920579"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+
+    window.openOrderModal = (id = null, data = null) => {
+        document.getElementById('orderModal').style.display = 'flex';
+        if(id) {
+            document.getElementById('editOrderId').value = id;
+            document.getElementById('customerName').value = data.musteri || "";
+            document.getElementById('fabricName').value = data.kumas || "";
+            document.getElementById('fabricWeight').value = data.gramaj || "";
+            document.getElementById('fabricWidth').value = data.en || "";
+            document.getElementById('orderQuantity').value = data.toplam_kg || 0;
+            if(data.tarih) { const p = data.tarih.split('.'); document.getElementById('orderDate').value = `${p[2]}-${p[1]}-${p[0]}`; }
+        } else {
+            document.getElementById('editOrderId').value = "";
+            document.querySelectorAll('#orderModal input').forEach(i => i.value = "");
+            document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
+        }
+    };
+
+    window.saveOrder = () => {
+        const id = document.getElementById('editOrderId').value;
+        const data = {
+            tarih: document.getElementById('orderDate').value.split('-').reverse().join('.'),
+            musteri: document.getElementById('customerName').value.toUpperCase(),
+            kumas: document.getElementById('fabricName').value.toUpperCase(),
+            gramaj: document.getElementById('fabricWeight').value,
+            en: document.getElementById('fabricWidth').value,
+            toplam_kg: document.getElementById('orderQuantity').value
+        };
+        if(id) update(ref(db, `siparisler/${id}`), data);
+        else { data.siparis_durumu = "İşlemde"; push(ref(db, 'siparisler'), data); }
+        closeModal('orderModal');
+    };
+
+    window.updateOrderMainStatus = (oId, val) => update(ref(db, `siparisler/${oId}`), {siparis_durumu: val});
+    window.updateStatus = (oId, key, val) => update(ref(db, `siparisler/${oId}/renkler/${key}`), {durum: val});
+
+    window.addColor = (oId) => {
+        const data = {
+            renk: document.getElementById(`renk_${oId}`).value.toUpperCase(),
+            kod: document.getElementById(`kod_${oId}`).value.toUpperCase(),
+            top: document.getElementById(`top_${oId}`).value,
+            kg: document.getElementById(`kg_${oId}`).value,
+            islem: document.getElementById(`islem_${oId}`).value,
+            durum: "Beklemede"
+        };
+        if(!data.renk || !data.kg) return alert("Renk ve KG zorunludur!");
+        push(ref(db, `siparisler/${oId}/renkler`), data);
+        document.querySelectorAll(`#panel_${oId} input, #panel_${oId} textarea`).forEach(i => i.value = "");
+    };
+
+    // TEKLİ BOYA TALİMATI YAZDIRMA (Çakışma Giderildi)
+    window.printInstruction = (orderId, colorKey) => {
+        onValue(ref(db, `siparisler/${orderId}`), (snap) => {
+            const order = snap.val();
+            const color = order.renkler[colorKey];
+            
+            document.getElementById('printListArea').classList.remove('print-active');
+            const printArea = document.getElementById('printArea');
+            printArea.classList.add('print-active');
+            
+            document.getElementById('p_kumas').innerText = order.kumas;
+            document.getElementById('p_en').innerText = order.en + " CM";
+            document.getElementById('p_gr').innerText = order.gramaj + " GR";
+            document.getElementById('p_renk').innerText = color.renk;
+            document.getElementById('p_kod').innerText = color.kod;
+            document.getElementById('p_top').innerText = color.top + " ADET";
+            document.getElementById('p_miktar').innerText = color.kg + " KG";
+            document.getElementById('p_islem').innerText = color.islem || "BELİRTİLMEDİ";
+            document.getElementById('printDate').innerText = "Tarih: " + new Date().toLocaleDateString('tr-TR');
+            
+            setTimeout(() => { window.print(); printArea.classList.remove('print-active'); }, 500);
+        }, { onlyOnce: true });
+    };
+
+    // TOPLU LİSTEYİ YAZDIRMA (Çakışma Giderildi)
+    window.printList = () => {
+        document.getElementById('printArea').classList.remove('print-active');
+        const printListArea = document.getElementById('printListArea');
+        printListArea.classList.add('print-active');
+        document.getElementById('listPrintDate').innerText = "Yazdırma Tarihi: " + new Date().toLocaleDateString('tr-TR');
+        setTimeout(() => { window.print(); printListArea.classList.remove('print-active'); }, 500);
+    };
+
+    window.openColorEdit = (orderId, key) => {
+        onValue(ref(db, `siparisler/${orderId}/renkler/${key}`), (snap) => {
+            const data = snap.val();
+            document.getElementById('colorEditModal').style.display = 'flex';
+            document.getElementById('ecOrderId').value = orderId;
+            document.getElementById('ecKey').value = key;
+            document.getElementById('ecRenk').value = data.renk;
+            document.getElementById('ecKod').value = data.kod;
+            document.getElementById('ecTop').value = data.top;
+            document.getElementById('ecKg').value = data.kg;
+            document.getElementById('ecIslem').value = data.islem || "";
+        }, { onlyOnce: true });
+    };
+
+    window.saveColorEdit = () => {
+        const oId = document.getElementById('ecOrderId').value;
+        const key = document.getElementById('ecKey').value;
+        const data = {
+            renk: document.getElementById('ecRenk').value.toUpperCase(),
+            kod: document.getElementById('ecKod').value.toUpperCase(),
+            top: document.getElementById('ecTop').value,
+            kg: document.getElementById('ecKg').value,
+            islem: document.getElementById('ecIslem').value
+        };
+        update(ref(db, `siparisler/${oId}/renkler/${key}`), data);
+        closeModal('colorEditModal');
+    };
+
+    onValue(ref(db, 'siparisler'), (snap) => {
+        const activeContainer = document.getElementById('activeOrders');
+        const passiveContainer = document.getElementById('passiveOrders');
+        const printTableBody = document.getElementById('printTableBody');
+        activeContainer.innerHTML = ""; passiveContainer.innerHTML = ""; printTableBody.innerHTML = "";
+        let grandTotal = 0;
+
+        snap.forEach(child => {
+            const id = child.key; const order = child.val();
+            const kg = parseFloat(order.toplam_kg || 0); 
+            const mainStatus = order.siparis_durumu || "İşlemde";
+
+            if(mainStatus !== 'Bitti') {
+                grandTotal += kg;
+                printTableBody.innerHTML += `<tr>
+                    <td>${order.tarih}</td>
+                    <td>${order.musteri}</td>
+                    <td>${order.kumas}</td>
+                    <td>${order.en} cm</td>
+                    <td>${order.gramaj} g</td>
+                    <td>${kg} kg</td>
+                </tr>`;
+            }
+            
+            let colorRows = "";
+            let isAllDone = true;
+            if(order.renkler) {
+                Object.entries(order.renkler).forEach(([k, v]) => {
+                    if(v.durum !== 'Tamamlandı') isAllDone = false;
+                    const sCls = v.durum === 'Tamamlandı' ? 'status-tamamlandi' : (v.durum === 'Boyada' ? 'status-boyada' : 'status-beklemede');
+                    colorRows += `<tr>
+                        <td><b>${v.renk}</b></td><td>${v.kod}</td><td>${v.top}</td><td>${v.kg}</td>
+                        <td style="font-size:11px">${v.islem || '-'}</td>
+                        <td><select class="status-select ${sCls}" onchange="updateStatus('${id}','${k}',this.value)">
+                            <option value="Beklemede" ${v.durum==='Beklemede'?'selected':''}>Beklemede</option>
+                            <option value="Boyada" ${v.durum==='Boyada'?'selected':''}>Boyada</option>
+                            <option value="Tamamlandı" ${v.durum==='Tamamlandı'?'selected':''}>Tamamlandı</option>
+                        </select></td>
+                        <td>
+                            <button onclick="printInstruction('${id}','${k}')" style="border:none; background:none; cursor:pointer; color:green"><span class="material-icons-round">print</span></button>
+                            <button onclick="openColorEdit('${id}','${k}')" style="border:none; background:none; cursor:pointer; color:blue"><span class="material-icons-round">edit</span></button>
+                        </td>
+                    </tr>`;
+                });
+            } else isAllDone = false;
+
+            const orderJson = JSON.stringify(order).replace(/"/g, '&quot;');
+            const html = `
+                <div class="order-item">
+                    <div class="order-header">
+                        <select class="status-select ${mainStatus==='Bitti'?'status-tamamlandi':'status-boyada'}" onchange="updateOrderMainStatus('${id}',this.value)" onclick="event.stopPropagation()">
+                            <option value="İşlemde" ${mainStatus==='İşlemde'?'selected':''}>İŞLEMDE</option>
+                            <option value="Bitti" ${mainStatus==='Bitti'?'selected':''}>BİTTİ</option>
+                        </select>
+                        <span>${order.tarih}</span><b>${order.musteri}</b><span>${order.kumas}</span>
+                        <span>${order.gramaj}g / ${order.en}cm</span><b>${kg} kg</b>
+                        <div style="display:flex; gap:5px;">
+                            <button class="btn-update" onclick='openOrderModal("${id}", ${orderJson})'><span class="material-icons-round" style="font-size:14px">edit</span> GÜNCELLE</button>
+                            <button class="btn-detail" onclick="document.getElementById('panel_${id}').classList.toggle('active')"><span class="material-icons-round">expand_more</span> DETAY</button>
+                        </div>
+                    </div>
+                    <div class="details-panel" id="panel_${id}">
+                        <div style="background:#f1f2f6; padding:15px; border-radius:8px; display:flex; gap:10px; margin-bottom:15px; align-items:center;">
+                            <input type="text" id="renk_${id}" placeholder="Renk" style="flex:1"><input type="text" id="kod_${id}" placeholder="Kod" style="flex:1">
+                            <input type="number" id="top_${id}" placeholder="Top" style="width:55px"><input type="number" id="kg_${id}" placeholder="Kg" style="width:75px">
+                            <textarea id="islem_${id}" placeholder="İşlemler..." style="flex:1.5; height:35px"></textarea>
+                            <button class="btn-submit" onclick="addColor('${id}')">RENK EKLE</button>
+                        </div>
+                        <table class="color-table">
+                            <thead><tr><th>Renk</th><th>Kod</th><th>Top</th><th>Kg</th><th>İşlem</th><th>Durum</th><th>#</th></tr></thead>
+                            <tbody>${colorRows || '<tr><td colspan="7">Renk eklenmemiş.</td></tr>'}</tbody>
+                        </table>
+                        <button onclick="if(confirm('Silinsin mi?')) remove(ref(db,'siparisler/${id}'))" style="color:red; background:none; border:none; margin-top:15px; cursor:pointer; font-size:11px;">SİPARİŞİ SİL</button>
+                    </div>
+                </div>`;
+            
+            if(mainStatus === 'Bitti' || isAllDone) passiveContainer.innerHTML += html;
+            else activeContainer.innerHTML += html;
+        });
+        document.getElementById('grand-total-display').innerText = grandTotal.toLocaleString('tr-TR') + " kg";
+        document.getElementById('printGrandTotal').innerText = "GENEL TOPLAM: " + grandTotal.toLocaleString('tr-TR') + " kg";
+    });
+</script>
+</body>
+</html>

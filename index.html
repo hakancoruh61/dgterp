@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doğan Güneş Tekstil - ERP Giriş</title>
+    <style>
+        :root {
+            --primary-dark: #1a252f;
+            --accent-sun: #f39c12;
+            --text-light: #ecf0f1;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: radial-gradient(circle at center, #2c3e50 0%, #000000 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            color: var(--text-light);
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            padding: 50px 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            width: 380px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .logo-area h2 {
+            margin: 0;
+            font-size: 24px;
+            letter-spacing: 3px;
+            color: var(--accent-sun);
+            text-transform: uppercase;
+        }
+
+        .logo-area p {
+            font-size: 11px;
+            margin-bottom: 40px;
+            letter-spacing: 1px;
+            opacity: 0.6;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-size: 13px; 
+            font-weight: 500;
+            color: var(--accent-sun);
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            box-sizing: border-box;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        input:focus {
+            border-color: var(--accent-sun);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 13px;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            margin-bottom: 25px;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            background: var(--accent-sun);
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background: #e67e22;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(230, 126, 34, 0.4);
+        }
+
+        #message { margin-top: 20px; font-size: 14px; min-height: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <div class="logo-area">
+        <h2>DOĞAN GÜNEŞ</h2>
+        <p>TEKSTİL ENDÜSTRİYEL ERP</p>
+    </div>
+
+    <div class="input-group">
+        <label>Kullanıcı Adı</label>
+        <input type="text" id="username" placeholder="Kullanıcı adınızı giriniz">
+    </div>
+
+    <div class="input-group">
+        <label>Şifre</label>
+        <input type="password" id="password" placeholder="Şifrenizi giriniz">
+    </div>
+
+    <label class="remember-me">
+        <input type="checkbox" id="remember"> Beni Hatırla
+    </label>
+
+    <button onclick="login()">SİSTEME GİRİŞ YAP</button>
+    <div id="message"></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+    
+    const firebaseConfig = {
+        apiKey: "AIzaSyDO8t-EAitn7S8sMDT8dussYYOIzoWaRzc",
+        authDomain: "dogan-gunes.firebaseapp.com",
+        databaseURL: "https://dogan-gunes-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "dogan-gunes",
+        storageBucket: "dogan-gunes.firebasestorage.app",
+        messagingSenderId: "713688836860",
+        appId: "1:713688836860:web:87bcc679b7fe4bd5920579"
+    };
+
+    const app = initializeApp(firebaseConfig);
+
+    window.onload = function() {
+        const savedUser = localStorage.getItem("dg_user");
+        if(savedUser) {
+            document.getElementById("username").value = savedUser;
+            document.getElementById("remember").checked = true;
+        }
+    }
+
+    window.login = function() {
+        const user = document.getElementById("username").value;
+        const pass = document.getElementById("password").value;
+        const remember = document.getElementById("remember").checked;
+        const msg = document.getElementById("message");
+
+        if(user === "dgterp" && pass === "2323") {
+            msg.style.color = "#2ecc71";
+            msg.innerText = "Giriş başarılı, panel açılıyor...";
+
+            if(remember) {
+                localStorage.setItem("dg_user", user);
+            } else {
+                localStorage.removeItem("dg_user");
+            }
+
+            setTimeout(() => {
+                window.location.href = "dashboard.html";
+            }, 800);
+        } else {
+            msg.style.color = "#e74c3c";
+            msg.innerText = "Hatalı kullanıcı adı veya şifre!";
+        }
+    }
+</script>
+</body>
+</html>
