@@ -34,43 +34,34 @@
         .status-boyada { background: #e3f2fd; color: #2980b9; }
         .status-tamamlandi { background: #e8f5e9; color: #27ae60; }
 
-        /* YAZDIRMA TASARIMI GÜNCELLEME */
         @media print {
-            @page { size: A4; margin: 0; }
+            @page { size: A4; margin: 10mm; }
             body * { visibility: hidden; }
             .print-active, .print-active * { visibility: visible !important; }
             .print-active { 
                 display: block !important; 
                 position: absolute; 
                 top: 0; left: 0; 
-                width: 210mm; 
-                padding: 15mm; 
-                box-sizing: border-box; 
+                width: 100%; 
                 background: white; 
             }
             .no-print { display: none !important; }
         }
 
-        /* Ortak Yazdırma Stilleri */
-        #printArea, #printListArea { display: none; font-family: 'Times New Roman', serif; color: black; line-height: 1.4; }
+        #printArea, #printListArea { display: none; font-family: 'Times New Roman', serif; color: black; }
         .p-title { text-align: center; font-size: 24pt; font-weight: bold; margin-bottom: 2mm; }
-        
-        /* Boya Talimatı Çizgi Ayarı */
-        .p-subtitle { 
-            text-align: center; font-size: 20pt; font-weight: bold; 
-            border-bottom: 3px solid black; /* Çizgi burada */
-            padding-bottom: 4mm; margin-bottom: 6mm; 
-        }
-
+        .p-subtitle { text-align: center; font-size: 20pt; font-weight: bold; border-bottom: 3px solid black; padding-bottom: 4mm; margin-bottom: 6mm; }
         .p-row { display: flex; margin-bottom: 4mm; font-size: 14pt; border-bottom: 1px solid #eee; padding-bottom: 2mm; }
         .p-label { font-weight: bold; width: 60mm; }
         .p-islem-box { border: 2px solid black; min-height: 80mm; padding: 5mm; font-size: 13pt; margin-top: 3mm; white-space: pre-wrap; }
 
-        /* Sipariş Listesi Yazdırma Tablosu */
+        /* Gelişmiş Sipariş Listesi Tablosu */
         .print-table { width: 100%; border-collapse: collapse; margin-top: 5mm; }
-        .print-table th, .print-table td { border: 1px solid black; padding: 8px; text-align: left; font-size: 11pt; }
+        .print-table th, .print-table td { border: 1px solid black; padding: 6px; text-align: left; font-size: 10pt; }
         .print-table th { background-color: #f2f2f2; }
-        .print-total { text-align: right; font-size: 14pt; font-weight: bold; margin-top: 5mm; }
+        .row-main-info { background-color: #fafafa; font-weight: bold; }
+        .row-color-detail { font-style: italic; color: #333; }
+        .print-total { text-align: right; font-size: 14pt; font-weight: bold; margin-top: 10mm; border-top: 2px solid black; padding-top: 5px; }
     </style>
 </head>
 <body>
@@ -92,17 +83,16 @@
 
 <div id="printListArea">
     <div class="p-title">DOĞAN GÜNEŞ TEKSTİL</div>
-    <div style="text-align:center; font-size:18pt; font-weight:bold; border-bottom:3px solid black; padding-bottom:4mm; margin-bottom:4mm;">SİPARİŞ LİSTESİ</div>
+    <div style="text-align:center; font-size:18pt; font-weight:bold; border-bottom:3px solid black; padding-bottom:4mm; margin-bottom:4mm;">SİPARİŞ LİSTESİ (DETAYLI)</div>
     <div style="text-align:right; margin-bottom:5mm;" id="listPrintDate"></div>
     <table class="print-table">
         <thead>
             <tr>
-                <th>Tarih</th>
-                <th>Müşteri Adı</th>
-                <th>Kumaş Adı</th>
-                <th>En</th>
-                <th>Gramaj</th>
-                <th>Miktar</th>
+                <th>Tarih / Müşteri</th>
+                <th>Kumaş / En / Gr</th>
+                <th>Renk / Kod</th>
+                <th>Top</th>
+                <th>Miktar (Kg)</th>
             </tr>
         </thead>
         <tbody id="printTableBody"></tbody>
@@ -201,16 +191,13 @@
         document.querySelectorAll(`#panel_${oId} input, #panel_${oId} textarea`).forEach(i => i.value = "");
     };
 
-    // TEKLİ BOYA TALİMATI YAZDIRMA (Çakışma Giderildi)
     window.printInstruction = (orderId, colorKey) => {
         onValue(ref(db, `siparisler/${orderId}`), (snap) => {
             const order = snap.val();
             const color = order.renkler[colorKey];
-            
             document.getElementById('printListArea').classList.remove('print-active');
             const printArea = document.getElementById('printArea');
             printArea.classList.add('print-active');
-            
             document.getElementById('p_kumas').innerText = order.kumas;
             document.getElementById('p_en').innerText = order.en + " CM";
             document.getElementById('p_gr').innerText = order.gramaj + " GR";
@@ -220,12 +207,10 @@
             document.getElementById('p_miktar').innerText = color.kg + " KG";
             document.getElementById('p_islem').innerText = color.islem || "BELİRTİLMEDİ";
             document.getElementById('printDate').innerText = "Tarih: " + new Date().toLocaleDateString('tr-TR');
-            
             setTimeout(() => { window.print(); printArea.classList.remove('print-active'); }, 500);
         }, { onlyOnce: true });
     };
 
-    // TOPLU LİSTEYİ YAZDIRMA (Çakışma Giderildi)
     window.printList = () => {
         document.getElementById('printArea').classList.remove('print-active');
         const printListArea = document.getElementById('printListArea');
@@ -274,16 +259,30 @@
             const kg = parseFloat(order.toplam_kg || 0); 
             const mainStatus = order.siparis_durumu || "İşlemde";
 
+            // RAPOR OLUŞTURMA (Aktif siparişleri rapora detaylı ekle)
             if(mainStatus !== 'Bitti') {
                 grandTotal += kg;
-                printTableBody.innerHTML += `<tr>
-                    <td>${order.tarih}</td>
-                    <td>${order.musteri}</td>
-                    <td>${order.kumas}</td>
-                    <td>${order.en} cm</td>
-                    <td>${order.gramaj} g</td>
-                    <td>${kg} kg</td>
-                </tr>`;
+                // Ana Satır
+                printTableBody.innerHTML += `
+                    <tr class="row-main-info">
+                        <td>${order.tarih}<br>${order.musteri}</td>
+                        <td>${order.kumas}<br>${order.en}cm / ${order.gramaj}g</td>
+                        <td colspan="2" style="text-align:right">Sipariş Toplamı:</td>
+                        <td><b>${kg} kg</b></td>
+                    </tr>`;
+                
+                // Renk Detay Satırları
+                if(order.renkler) {
+                    Object.values(order.renkler).forEach(v => {
+                        printTableBody.innerHTML += `
+                            <tr class="row-color-detail">
+                                <td colspan="2"></td>
+                                <td>• ${v.renk} (${v.kod})</td>
+                                <td>${v.top || 0} Top</td>
+                                <td>${v.kg} kg</td>
+                            </tr>`;
+                    });
+                }
             }
             
             let colorRows = "";
