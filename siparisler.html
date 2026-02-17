@@ -21,7 +21,8 @@
         label { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 5px; }
         input, select, textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none; font-size: 14px; }
         .order-item { background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 10px; }
-        .order-header { padding: 15px; display: grid; grid-template-columns: 0.7fr 0.8fr 1.5fr 1.2fr 0.8fr 0.7fr 1.8fr; align-items: center; font-size: 14px; }
+        /* Butonlar için genişlik ayarı yapıldı */
+        .order-header { padding: 15px; display: grid; grid-template-columns: 0.7fr 0.8fr 1.5fr 1.2fr 0.8fr 0.7fr 2.3fr; align-items: center; font-size: 14px; }
         .details-panel { display: none; padding: 20px; background: #fcfcfc; border-top: 1px dashed #ddd; }
         .details-panel.active { display: block; }
         .color-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
@@ -30,6 +31,7 @@
         .btn-submit { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-update { background: var(--blue); color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; }
         .btn-detail { background: var(--primary); color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 2px; }
+        .btn-delete { background: var(--danger); color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 2px; }
         .status-select { padding: 5px; border-radius: 4px; font-size: 11px; font-weight: bold; }
         .status-boyada { background: #e3f2fd; color: #2980b9; }
         .status-tamamlandi { background: #e8f5e9; color: #27ae60; }
@@ -55,7 +57,6 @@
         .p-label { font-weight: bold; width: 60mm; }
         .p-islem-box { border: 2px solid black; min-height: 80mm; padding: 5mm; font-size: 13pt; margin-top: 3mm; white-space: pre-wrap; }
 
-        /* Gelişmiş Sipariş Listesi Tablosu */
         .print-table { width: 100%; border-collapse: collapse; margin-top: 5mm; }
         .print-table th, .print-table td { border: 1px solid black; padding: 6px; text-align: left; font-size: 10pt; }
         .print-table th { background-color: #f2f2f2; }
@@ -141,6 +142,15 @@
     const db = getDatabase(app);
 
     window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+
+    // GARANTİLİ SİLME FONKSİYONU
+    window.orderSil = (id, musteri) => {
+        if(confirm(musteri + " siparişini tamamen silmek istiyor musunuz?")) {
+            remove(ref(db, 'siparisler/' + id))
+                .then(() => console.log("Silindi"))
+                .catch((e) => alert("Hata: " + e.message));
+        }
+    };
 
     window.openOrderModal = (id = null, data = null) => {
         document.getElementById('orderModal').style.display = 'flex';
@@ -259,10 +269,8 @@
             const kg = parseFloat(order.toplam_kg || 0); 
             const mainStatus = order.siparis_durumu || "İşlemde";
 
-            // RAPOR OLUŞTURMA (Aktif siparişleri rapora detaylı ekle)
             if(mainStatus !== 'Bitti') {
                 grandTotal += kg;
-                // Ana Satır
                 printTableBody.innerHTML += `
                     <tr class="row-main-info">
                         <td>${order.tarih}<br>${order.musteri}</td>
@@ -271,7 +279,6 @@
                         <td><b>${kg} kg</b></td>
                     </tr>`;
                 
-                // Renk Detay Satırları
                 if(order.renkler) {
                     Object.values(order.renkler).forEach(v => {
                         printTableBody.innerHTML += `
@@ -320,6 +327,7 @@
                         <div style="display:flex; gap:5px;">
                             <button class="btn-update" onclick='openOrderModal("${id}", ${orderJson})'><span class="material-icons-round" style="font-size:14px">edit</span> GÜNCELLE</button>
                             <button class="btn-detail" onclick="document.getElementById('panel_${id}').classList.toggle('active')"><span class="material-icons-round">expand_more</span> DETAY</button>
+                            <button class="btn-delete" onclick="window.orderSil('${id}', '${order.musteri}')"><span class="material-icons-round" style="font-size:14px">delete</span> SİL</button>
                         </div>
                     </div>
                     <div class="details-panel" id="panel_${id}">
@@ -333,7 +341,6 @@
                             <thead><tr><th>Renk</th><th>Kod</th><th>Top</th><th>Kg</th><th>İşlem</th><th>Durum</th><th>#</th></tr></thead>
                             <tbody>${colorRows || '<tr><td colspan="7">Renk eklenmemiş.</td></tr>'}</tbody>
                         </table>
-                        <button onclick="if(confirm('Silinsin mi?')) remove(ref(db,'siparisler/${id}'))" style="color:red; background:none; border:none; margin-top:15px; cursor:pointer; font-size:11px;">SİPARİŞİ SİL</button>
                     </div>
                 </div>`;
             
